@@ -6,10 +6,15 @@ eps = 1e-7
 class NCECriterion(nn.Module):
 
     def __init__(self, nLem):
+        # nlem: length of dataset
         super(NCECriterion, self).__init__()
         self.nLem = nLem
 
     def forward(self, x, targets):
+        '''
+        x: result after 'softmax'
+        target: label
+        '''
         batchSize = x.size(0)
         K = x.size(1)-1
         Pnt = 1 / float(self.nLem)
@@ -22,6 +27,10 @@ class NCECriterion(nn.Module):
         
         # eq 5.2 : P(origin=noise) = k*Pns / (Pms + k*Pns)
         Pon_div = x.narrow(1,1,K).add(K * Pns + eps)
+        # narrow(dimension, start, length): 
+        # Returns a new tensor that is a narrowed version of input tensor. 
+        # The dimension dim is input from start to start + length. 
+        # The returned tensor and input tensor share the same underlying storage.
         Pon = Pon_div.clone().fill_(K * Pns)
         lnPon = torch.div(Pon, Pon_div)
      

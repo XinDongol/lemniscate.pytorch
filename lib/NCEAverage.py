@@ -7,6 +7,13 @@ import math
 class NCEFunction(Function):
     @staticmethod
     def forward(self, x, y, memory, idx, params):
+        '''
+        x: input feature f_i [bs, inputSize]
+        y: ground truth label, a.k.a., index of input [bs, 1]
+        memory: memory bank [outputSize, inputSize]
+        idx: index of noise input [bs, K+1]
+        params: 
+        '''
         K = int(params[0].item())
         T = params[1].item()
         Z = params[2].item()
@@ -17,9 +24,10 @@ class NCEFunction(Function):
         inputSize = memory.size(1)
 
         # sample positives & negatives
+        # because idx is [bs, K+1], so the first one is ground_truth index instead of noise one
         idx.select(1,0).copy_(y.data)
 
-        # sample correspoinding weights
+        # sample correspoinding weights from memory bank
         weight = torch.index_select(memory, 0, idx.view(-1))
         weight.resize_(batchSize, K+1, inputSize)
 
@@ -29,7 +37,7 @@ class NCEFunction(Function):
         x.data.resize_(batchSize, inputSize)
 
         if Z < 0:
-            params[2] = out.mean() * outputSize
+            params[2] = out.mean() * outputSize  # sum(out)*(1/k+1)*outputSize*(1/batchSize)
             Z = params[2].item()
             print("normalization constant Z is set to {:.1f}".format(Z))
 
@@ -88,4 +96,6 @@ class NCEAverage(nn.Module):
         idx = self.multinomial.draw(batchSize * (self.K+1)).view(batchSize, -1)
         out = NCEFunction.apply(x, y, self.memory, idx, self.params)
         return out
+    
+        # then NCECriterion(out, y) will be called.
 
